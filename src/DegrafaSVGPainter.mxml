@@ -71,6 +71,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 			{
      		this.stroke = this.strokeControlBar.stroke;     		
 				clearCanvas();
+				//test comment
 			}
 			
 			private function onStrokeChange(event:StrokeEvent):void
