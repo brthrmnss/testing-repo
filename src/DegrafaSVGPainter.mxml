@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright (c) 2009 Random Fractals, Inc. (www.randomfractals.com)
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+-->
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml"
+	xmlns:degrafa="http://www.degrafa.com/2007"	 
+	xmlns:paint="com.randomfractals.paint.*"
+	xmlns:stroke="com.randomfractals.paint.strokes.*"							
+	layout="absolute" pageTitle="Degrafa SVG Painter"
+	backgroundGradientColors="[#333333, #222222]" 
+	creationComplete="initPaint();" 
+	viewSourceURL="srcview/index.html">
+			
+	<mx:Style source="kingnarestyle.css"/>
+
+	<mx:Style source="assets/styles.css"/>
+	
+	<mx:Script>
+		<![CDATA[
+			import com.degrafa.geometry.segment.LineTo;			
+			import flash.events.MouseEvent;
+
+			import mx.controls.Alert;
+			import mx.events.ColorPickerEvent;
+			import mx.events.SliderEvent;
+			
+			import com.degrafa.IGeometry;			
+			import com.degrafa.core.IGraphicsStroke;
+			import com.degrafa.geometry.Path;
+			import com.degrafa.geometry.segment.LineTo;
+			import com.degrafa.paint.SolidStroke;
+			import com.degrafa.core.utils.ColorUtil;
+
+			import com.randomfractals.paint.events.StrokeEvent;
+			import com.randomfractals.paint.utils.SVGUtil;
+			
+			[Bindable]
+			private var fillColor:uint = 0x333333;
+			
+			[Bindable]			
+			private var stroke:IGraphicsStroke;
+			
+			private var painting:Boolean = false;
+			
+			private var currentPath:Path;
+			
+			private var redoStack:Array;
+			
+			private function initPaint():void
+			{
+     		this.stroke = this.strokeControlBar.stroke;     		
+				clearCanvas();
+			}
+			
+			private function onStrokeChange(event:StrokeEvent):void
+			{
+				// get new stroke
+				this.stroke = strokeControlBar.stroke;
+			}
+			
+			private function startPainting(event:MouseEvent):void
+			{
+				painting = true;
+								
+				// clear redo stack
+				redoStack = new Array(50);
+				
+				// create new path
+				var path:String = "M " + paintCanvas.mouseX + " " + paintCanvas.mouseY;
+				currentPath = new Path(path);
+				currentPath.stroke = this.stroke;
+				
+				// add new path
+				canvas.geometryCollection.addItem(currentPath);				
+			}
+			
+			private function paintPath(event:MouseEvent):void
+			{
+				if (painting)
+				{
+					// add a line
+					var data:String = paintCanvas.mouseX + " " + paintCanvas.mouseY;
+					currentPath.segmentCollection.addItem(new LineTo(paintCanvas.mouseX, paintCanvas.mouseY, data));
+					currentPath.data += " L " + data; 										 
+					event.updateAfterEvent();
+				}
+			}
+			
+			private function stopPainting(event:MouseEvent):void
+			{
+				painting = false;	
+			}
+			
+			
+			private function undo():Boolean
+			{
+				var itemCount:uint = canvas.geometryCollection.items.length; 
+				if ( itemCount > 0)
+				{
+					currentPath = canvas.geometryCollection.getItemAt(itemCount-1) as Path;
+					if (currentPath)
+					{
+						redoStack.push(currentPath);
+						canvas.geometryCollection.removeItem(currentPath);
+						redoButton.enabled = true;										
+						return true;
+					}										
+				}	
+				return false;							
+			}
+			
+			private function redo():void
+			{
+				if (currentPath != null && redoStack.length > 0)
+				{
+					currentPath = redoStack.pop() as Path;
+					if (currentPath != null)
+					{
+						canvas.geometryCollection.addItem(currentPath);
+					}
+				}
+				if (currentPath == null || redoStack.length <= 0)
+				{
+					redoButton.enabled = false;
+				}				
+			}
+			
+			private function clearCanvas():void
+			{
+				while (undo())
+				; // undo all
+				
+				// create redo stack
+				redoStack = new Array(50);								
+				redoButton.enabled = false;
+			}
+			
+			private function onTabSelectionChange():void
+			{
+				switch (tabNavigator.selectedIndex)
+				{
+					case 1:
+					svgText.text = SVGUtil.getSVGHeader(paintCanvas.width, paintCanvas.height);
+					svgText.text += SVGUtil.getGeometryString(canvas, fillColor);
+					svgText.text += "</svg>";
+					break;
+				}
+			}
+
+		]]>
+	</mx:Script>
+
+
+	<mx:HBox id="appTitleBox" left="10" top="40">
+    <mx:LinkButton label="SVG Painter" styleName="appTitle" 
+    	toolTip="See designer's blog" 
+    	click="navigateToURL(new URLRequest('http://www.randomfractals.com/blog/'));"/>				
+	</mx:HBox>
+		
+	<mx:Label id="versionLabel" left="110" top="70" 
+		text="(v. 0.1)" />
+	
+	<mx:ApplicationControlBar id="controlBar" 
+		left="160" top="40" 
+		width="80%" height="50">
+		
+		<mx:Button id="newButton" label="New" 
+			toolTip="Start New Painting" 
+			click="clearCanvas();"/>		
+		<mx:Button id="undoButton" label="Undo" 
+			toolTip="Undo Stroke" 
+			click="undo();"/>			
+		<mx:Button id="redoButton" label="Redo" 
+			toolTip="Redo Stroke" 
+			click="redo();"/>			
+		<!--
+		<mx:Button id="saveButton" label="Save" />
+		-->
+		
+		<mx:Label text="Fill:" />
+		<mx:ColorPicker id="fillColorPicker" 
+			toolTip="Change Background Color" 
+			selectedColor="{this.fillColor}" 
+			change="{this.fillColor = fillColorPicker.selectedColor}" />
+				
+		<stroke:StrokeControlBar id="strokeControlBar" 
+			strokeChange="onStrokeChange(event);" />
+		
+	</mx:ApplicationControlBar>
+	
+	<mx:TabNavigator id="tabNavigator" 
+		left="160" top="100" 
+		width="80%" height="80%" 
+		creationPolicy="all" 
+		change="onTabSelectionChange();">
+		
+		<mx:VBox label="Canvas">
+			<mx:Canvas id="paintCanvas" 
+				width="100%" height="100%" 
+				backgroundColor="{this.fillColor}"  
+				mouseDown="startPainting(event);" 
+				mouseMove="paintPath(event)" 
+				mouseUp="stopPainting(event);">
+		
+				<degrafa:Surface id="surface">		
+					<degrafa:GeometryGroup id="canvas">
+						<degrafa:fills>
+							<degrafa:SolidFill id="bgFill" color="{this.fillColor}" />
+						</degrafa:fills>
+					</degrafa:GeometryGroup>			
+				</degrafa:Surface>
+				
+			</mx:Canvas>
+		</mx:VBox>
+		<mx:VBox label="SVG">
+			<mx:TextArea id="svgText" width="100%" height="100%" />
+		</mx:VBox>
+	</mx:TabNavigator>
+	
+  <mx:LinkButton bottom="10" right="10"
+  	label="Created by Taras Novak, © 2009 Random Fractals, Inc." 
+  	toolTip="See www.randomfractals.com blog"
+    click="navigateToURL(new URLRequest('http://www.randomfractals.com/blog/'));"/>				
+		
+</mx:Application>

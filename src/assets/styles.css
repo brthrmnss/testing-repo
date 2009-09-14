@@ -1,0 +1,27 @@
+.appTitle
+{
+	fontSize: 24;
+	textAlign: left;	
+	paddingLeft: 0;
+	color: #FFFFFF;
+}
+
+Application
+{
+	background-color: "#222222";
+  background-image:	GRID, LOGO;
+  background-repeat: repeat-x, no-repeat;
+  background-position: "top left", "10px 10px";
+  borderSkin:	ClassReference("com.degrafa.skins.CSSSkin");
+  asset-class: ClassReference("assets.EmbeddedAssets");	
+}
+
+HBox 
+{
+	horizontalAlign: center;
+	verticalAlign: middle;	
+	paddingLeft: 0;
+	paddingRight: 0;
+	paddingTop: 0;
+	paddingBottom: 0;	
+}
